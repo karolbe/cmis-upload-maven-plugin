@@ -102,22 +102,34 @@ public class CmisUploadMojo extends AbstractMojo {
             );
 
             for (File file : files) {
-                String repoPath = destPath + calculateDestinationPath(file.getAbsolutePath());
+                String sep = "";
+                String fullFolderPath = destPath + calculateDestinationPath(file.getAbsolutePath());
+                String fullFilePath;
+                if(!fullFolderPath.endsWith("/")) {
+                    sep = "/";
+                }
+
+                fullFilePath = fullFolderPath + sep + file.getName();
 
                 if (file.isDirectory()) {
-                    getLog().info("Creating directory " + file.getName() + " in " + repoPath + " " + (objectExists(repoPath + "/" + file.getName())));
-                    if ((objectExists(repoPath + "/" + file.getName())) == null) {
-                        Folder folder = createFolder(repoPath, file.getName(), "cmis:folder");
+                    getLog().debug("Creating directory " + file.getName() + " in " + fullFolderPath);
+
+                    if ((objectExists(fullFilePath)) == null) {
+                        Folder folder = createFolder(fullFolderPath, file.getName(), "cmis:folder");
                         getLog().info("Created folder " + folder.getPath() + "(" + folder.getId() + ")");
                     }
                 } else if (file.isFile()) {
-                    getLog().info("Creating file " + file.getName() + " in " + repoPath);
-                    CmisObject object;
-                    if ((object = objectExists(repoPath)) == null) {
-                        object = createFolder(repoPath, file.getName(), "cmis:folder");
-                        getLog().info("Created folder " + ((Folder)object).getPath() + "(" + object.getId() + ")");
+                    getLog().info("Creating file " + file.getName() + " in " + fullFolderPath);
+                    CmisObject parentFolder;
+                    if ((parentFolder = objectExists(fullFolderPath)) == null) {
+                        parentFolder = createFolder(fullFolderPath, file.getName(), "cmis:folder");
+                        getLog().info("Created folder " + ((Folder)parentFolder).getPath() + "(" + parentFolder.getId() + ")");
                     }
-                    uploadFile(file.getPath(), file, (Folder) object);
+                    if (objectExists(fullFilePath) != null && overwrite) {
+                        CmisObject object = _session.getObjectByPath(fullFilePath);
+                        _session.delete(object);
+                    }
+                    uploadFile(file.getPath(), file, (Folder) parentFolder);
                 }
             }
         } catch (IOException ex) {
@@ -178,7 +190,7 @@ public class CmisUploadMojo extends AbstractMojo {
 
     private Folder createFolder(String path, String folderName, String objectTypeId) throws PluginException {
         if (getLog().isDebugEnabled()) {
-            getLog().debug("Creating folder '" + folderName + "' in location '" + path + "' folder type is '" + objectTypeId + "'");
+            getLog().info("Creating folder '" + folderName + "' in location '" + path + "' folder type is '" + objectTypeId + "'");
         }
 
         String tmp = path;
