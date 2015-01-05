@@ -36,8 +36,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Goal which uploads an artifact to a pre-configured CMIS repository. Does not
- * upload the .pom file.
+ * Upload a folder with sub-folders and files to a CMIS compliant repository.
  */
 @Mojo(name = "cmis-upload", defaultPhase = LifecyclePhase.INSTALL)
 public class CmisUploadMojo extends AbstractMojo {
@@ -45,8 +44,6 @@ public class CmisUploadMojo extends AbstractMojo {
     public static final String DEFAULT_USERNAME = "admin";
 
     public static final String DEFAULT_PASSWORD = "admin";
-
-    public static final String DEFAULT_MIMETYPE = "application/octet-stream";
 
     /**
      * The username.

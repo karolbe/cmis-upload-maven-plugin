@@ -7,8 +7,25 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>maven-plugin</packaging>
 
-    <name>maven-cmis-upload-plugin Maven Plugin</name>
-    <url>http://maven.apache.org</url>
+    <name>CMIS upload Maven plugin</name>
+    <url>https://github.com/karolbe/cmis-upload-maven-plugin</url>
+
+    <organization>
+        <name>Metasys</name>
+        <url>http://bloh.metasys.pl</url>
+    </organization>
+    <developers>
+        <developer>
+            <id>karol.bryd</id>
+            <name>Karol Bryd</name>
+            <email>karolbe@gmail.com</email>
+            <organization>Metasys</organization>
+            <organizationUrl>http://blog.metasys.pl</organizationUrl>
+            <roles>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

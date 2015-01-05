@@ -3,11 +3,11 @@ cmis-upload-maven-plugin
 
 A Maven plugin that helps automating unit testing of CMIS compliant repositories.
 
-In order to use the plugin checkout the source code, and build it using
+In order to use the plugin checkout the source code and build it in a standard way:
 
 `mvn install`
 
-Then edit ~/.m2/settings.xml file and add to it:
+Then edit ~/.m2/settings.xml file and add following snippet:
 
 ```
     <pluginGroups>
@@ -15,7 +15,7 @@ Then edit ~/.m2/settings.xml file and add to it:
     </pluginGroups>
 ```
 
-Then in your pom.xml file add following plugin definition:
+Then, in your pom.xml file add following plugin definition:
 
 ```            
       <plugin>
@@ -52,3 +52,4 @@ don't want to create such long paths in the repository, so you can set skipPathC
 * username - login to the repository
 * password - the password
 * url - the URL to the ATOM CMIS binding.
+
