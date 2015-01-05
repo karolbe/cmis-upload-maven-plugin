@@ -112,20 +112,20 @@ public class CmisUploadMojo extends AbstractMojo {
                 fullFilePath = fullFolderPath + sep + file.getName();
 
                 if (file.isDirectory()) {
-                    getLog().debug("Creating directory " + file.getName() + " in " + fullFolderPath);
+                    getLog().info("Creating directory " + file.getName() + " in " + fullFolderPath);
 
-                    if ((objectExists(fullFilePath)) == null) {
+                    if ((getObjectByPath(fullFilePath)) == null) {
                         Folder folder = createFolder(fullFolderPath, file.getName(), "cmis:folder");
                         getLog().info("Created folder " + folder.getPath() + "(" + folder.getId() + ")");
                     }
                 } else if (file.isFile()) {
                     getLog().info("Creating file " + file.getName() + " in " + fullFolderPath);
                     CmisObject parentFolder;
-                    if ((parentFolder = objectExists(fullFolderPath)) == null) {
+                    if ((parentFolder = getObjectByPath(fullFolderPath)) == null) {
                         parentFolder = createFolder(fullFolderPath, file.getName(), "cmis:folder");
                         getLog().info("Created folder " + ((Folder)parentFolder).getPath() + "(" + parentFolder.getId() + ")");
                     }
-                    if (objectExists(fullFilePath) != null && overwrite) {
+                    if (getObjectByPath(fullFilePath) != null && overwrite) {
                         CmisObject object = _session.getObjectByPath(fullFilePath);
                         _session.delete(object);
                     }
@@ -177,7 +177,7 @@ public class CmisUploadMojo extends AbstractMojo {
         getLog().info("Uploaded '" + file.getName() + "' to '" + path + "' with a document id of '" + document.getId() + "' as " + type.getType() + "/" + type.getSubtype());
     }
 
-    private CmisObject objectExists(String path) {
+    private CmisObject getObjectByPath(String path) {
         try {
             OperationContext oc = new OperationContextImpl();
             oc.setCacheEnabled(false);
@@ -192,19 +192,6 @@ public class CmisUploadMojo extends AbstractMojo {
         if (getLog().isDebugEnabled()) {
             getLog().info("Creating folder '" + folderName + "' in location '" + path + "' folder type is '" + objectTypeId + "'");
         }
-
-        String tmp = path;
-        if (tmp.endsWith("/")) {
-            tmp += folderName;
-        } else {
-            tmp += "/" + folderName;
-        }
-
-        if (objectExists(tmp) != null) {
-            getLog().warn("Folder " + tmp + " exists.");
-            throw new PluginException("Folder " + tmp + " exists.");
-        }
-
         Folder root;
         if (path == null) {
             root = _session.getRootFolder();
