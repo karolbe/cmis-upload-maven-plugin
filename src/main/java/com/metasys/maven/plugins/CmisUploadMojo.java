@@ -81,12 +81,6 @@ public class CmisUploadMojo extends AbstractMojo {
     @Parameter(property = "overwrite", alias = "overwrite", defaultValue = "false", required = true)
     private boolean overwrite;
 
-    /**
-     * How many path components to skip
-     */
-    @Parameter(property = "skipPathComponents", alias = "skipPathComponents", defaultValue = "0")
-    private int skipPathComponents;
-
 
     private Session _session;
 
@@ -101,35 +95,36 @@ public class CmisUploadMojo extends AbstractMojo {
                     DirectoryFileFilter.DIRECTORY
             );
 
+            boolean skippedRoot = false;
+
             for (File file : files) {
-                String sep = "";
-                String fullFolderPath = destPath + calculateDestinationPath(file.getAbsolutePath());
-                String fullFilePath;
-                if(!fullFolderPath.endsWith("/")) {
-                    sep = "/";
+                if(!skippedRoot) {
+                    skippedRoot = true;
+                    continue;
                 }
 
-                fullFilePath = fullFolderPath + sep + file.getName();
+                String fullFolderPath = new File(destPath, file.getAbsolutePath().substring(localPath.length())).getPath();
+                String parentFolder = new File(fullFolderPath).getParentFile().getPath();
 
                 if (file.isDirectory()) {
-                    getLog().info("Creating directory " + file.getName() + " in " + fullFolderPath);
+                    getLog().info("Creating directory " + file.getName() + " in " + parentFolder);
 
-                    if ((getObjectByPath(fullFilePath)) == null) {
-                        Folder folder = createFolder(fullFolderPath, file.getName(), "cmis:folder");
+                    if ((getObjectByPath(fullFolderPath)) == null) {
+                        Folder folder = createFolder(parentFolder, file.getName(), "cmis:folder");
                         getLog().info("Created folder " + folder.getPath() + "(" + folder.getId() + ")");
                     }
                 } else if (file.isFile()) {
-                    getLog().info("Creating file " + file.getName() + " in " + fullFolderPath);
-                    CmisObject parentFolder;
-                    if ((parentFolder = getObjectByPath(fullFolderPath)) == null) {
-                        parentFolder = createFolder(fullFolderPath, file.getName(), "cmis:folder");
-                        getLog().info("Created folder " + ((Folder)parentFolder).getPath() + "(" + parentFolder.getId() + ")");
+                    getLog().info("Creating file " + file.getName() + " in " + parentFolder);
+                    CmisObject parentFolderObject;
+                    if ((parentFolderObject = getObjectByPath(parentFolder)) == null) {
+                        parentFolderObject = createFolder(parentFolder, file.getName(), "cmis:folder");
+                        getLog().info("Created folder " + ((Folder)parentFolderObject).getPath() + "(" + parentFolderObject.getId() + ")");
                     }
-                    if (getObjectByPath(fullFilePath) != null && overwrite) {
-                        CmisObject object = _session.getObjectByPath(fullFilePath);
+                    if (getObjectByPath(fullFolderPath) != null && overwrite) {
+                        CmisObject object = _session.getObjectByPath(fullFolderPath);
                         _session.delete(object);
                     }
-                    uploadFile(file.getPath(), file, (Folder) parentFolder);
+                    uploadFile(file.getPath(), file, (Folder) parentFolderObject);
                 }
             }
         } catch (IOException ex) {
@@ -139,20 +134,6 @@ public class CmisUploadMojo extends AbstractMojo {
         } catch (PluginException ex) {
             ex.printStackTrace();
         }
-    }
-
-    private String calculateDestinationPath(String localPath) {
-        String[] fields = localPath.split("/");
-
-        String result = "";
-        for (int n = skipPathComponents + 1; n < fields.length - 1; n++) {
-            result += fields[n] + "/";
-        }
-
-        if (result.length() > 1) {
-            result = result.substring(0, result.length() - 1);
-        }
-        return result;
     }
 
     private void uploadFile(String path, File file, Folder destinationFolder) throws IOException {
@@ -188,15 +169,15 @@ public class CmisUploadMojo extends AbstractMojo {
         return null;
     }
 
-    private Folder createFolder(String path, String folderName, String objectTypeId) throws PluginException {
+    private Folder createFolder(String parentPath, String folderName, String objectTypeId) throws PluginException {
         if (getLog().isDebugEnabled()) {
-            getLog().info("Creating folder '" + folderName + "' in location '" + path + "' folder type is '" + objectTypeId + "'");
+            getLog().info("Creating folder '" + folderName + "' in location '" + parentPath + "' folder type is '" + objectTypeId + "'");
         }
         Folder root;
-        if (path == null) {
+        if (parentPath == null) {
             root = _session.getRootFolder();
         } else {
-            root = (Folder) _session.getObjectByPath(path);
+            root = (Folder) _session.getObjectByPath(parentPath);
         }
 
         Map<String, String> newFolderProps = new HashMap<String, String>();
