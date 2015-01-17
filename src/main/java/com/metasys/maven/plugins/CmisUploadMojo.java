@@ -9,7 +9,6 @@ import org.apache.chemistry.opencmis.commons.data.ContentStream;
 import org.apache.chemistry.opencmis.commons.enums.BindingType;
 import org.apache.chemistry.opencmis.commons.enums.VersioningState;
 import org.apache.chemistry.opencmis.commons.exceptions.CmisRuntimeException;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.ContentStreamImpl;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.io.filefilter.FileFileFilter;
@@ -28,7 +27,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.Serializable;
-import java.math.BigInteger;
 import java.net.URL;
 import java.util.Collection;
 import java.util.HashMap;
@@ -107,24 +105,24 @@ public class CmisUploadMojo extends AbstractMojo {
                 String parentFolder = new File(fullFolderPath).getParentFile().getPath();
 
                 if (file.isDirectory()) {
-                    getLog().info("Creating directory " + file.getName() + " in " + parentFolder);
+                    getLog().info(String.format("Creating directory %s in %s", file.getName(), parentFolder));
 
                     if ((getObjectByPath(fullFolderPath)) == null) {
                         Folder folder = createFolder(parentFolder, file.getName(), "cmis:folder");
-                        getLog().info("Created folder " + folder.getPath() + "(" + folder.getId() + ")");
+                        getLog().info(String.format("Created folder %s (%s)", folder.getPath(), folder.getId()));
                     }
                 } else if (file.isFile()) {
-                    getLog().info("Creating file " + file.getName() + " in " + parentFolder);
+                    getLog().info(String.format("Creating file %s in %s", file.getName(), parentFolder));
                     CmisObject parentFolderObject;
                     if ((parentFolderObject = getObjectByPath(parentFolder)) == null) {
                         parentFolderObject = createFolder(parentFolder, file.getName(), "cmis:folder");
-                        getLog().info("Created folder " + ((Folder)parentFolderObject).getPath() + "(" + parentFolderObject.getId() + ")");
+                        getLog().info(String.format("Created folder %s (%s)", ((Folder) parentFolderObject).getPath(), parentFolderObject.getId()));
                     }
                     if (getObjectByPath(fullFolderPath) != null && overwrite) {
                         CmisObject object = _session.getObjectByPath(fullFolderPath);
                         _session.delete(object);
                     }
-                    uploadFile(file.getPath(), file, (Folder) parentFolderObject);
+                    uploadFile(file, (Folder) parentFolderObject);
                 }
             }
         } catch (IOException ex) {
@@ -136,26 +134,38 @@ public class CmisUploadMojo extends AbstractMojo {
         }
     }
 
-    private void uploadFile(String path, File file, Folder destinationFolder) throws IOException {
+    private void uploadFile(File file, Folder destinationFolder) throws IOException {
         Map<String, Serializable> properties = new HashMap<String, Serializable>();
+        MediaType type = null;
 
         properties.put(PropertyIds.NAME, file.getName());
         properties.put(PropertyIds.OBJECT_TYPE_ID, "cmis:document");
 
         FileInputStream fileInputStream = new FileInputStream(file);
-        TikaConfig config = TikaConfig.getDefaultConfig();
-        Detector detector = config.getDetector();
-        TikaInputStream stream = TikaInputStream.get(fileInputStream);
+        try {
+            TikaConfig config = TikaConfig.getDefaultConfig();
+            Detector detector = config.getDetector();
+            TikaInputStream stream = TikaInputStream.get(fileInputStream);
 
-        Metadata metadata = new Metadata();
-        metadata.add(Metadata.RESOURCE_NAME_KEY, file.getName());
+            Metadata metadata = new Metadata();
+            metadata.add(Metadata.RESOURCE_NAME_KEY, file.getName());
+            type = detector.detect(stream, metadata);
+        } catch(Exception e) {
+            getLog().error(e);
+        } finally {
+            fileInputStream.close();
+        }
 
-        MediaType type = detector.detect(stream, metadata);
-
-        ContentStream contentStream = new ContentStreamImpl(file.getAbsolutePath(), BigInteger.valueOf(file.length()), type.getType() + "/" + type.getSubtype(), fileInputStream);
-        _session.clear();
-        Document document = destinationFolder.createDocument(properties, contentStream, VersioningState.MAJOR);
-        getLog().info("Uploaded '" + file.getName() + "' to '" + path + "' with a document id of '" + document.getId() + "' as " + type.getType() + "/" + type.getSubtype());
+        fileInputStream = new FileInputStream(file);
+        try {
+            ContentStream contentStream = _session.getObjectFactory().createContentStream(file.getAbsolutePath(), file.length(), type.getType() + "/" + type.getSubtype(), fileInputStream);
+            _session.clear();
+            Document document = destinationFolder.createDocument(properties, contentStream, VersioningState.MAJOR);
+            getLog().info(String.format("Uploaded file '%s' (size %d bytes) to '%s' with a document id of '%s' as %s/%s",
+                    file.getName(), file.length(), destinationFolder.getPath(), document.getId(), type.getType(), type.getSubtype()));
+        } finally {
+            fileInputStream.close();
+        }
     }
 
     private CmisObject getObjectByPath(String path) {
@@ -171,7 +181,7 @@ public class CmisUploadMojo extends AbstractMojo {
 
     private Folder createFolder(String parentPath, String folderName, String objectTypeId) throws PluginException {
         if (getLog().isDebugEnabled()) {
-            getLog().info("Creating folder '" + folderName + "' in location '" + parentPath + "' folder type is '" + objectTypeId + "'");
+            getLog().info(String.format("Creating folder '%s' in location '%s' folder type is '%s'", folderName, parentPath, objectTypeId));
         }
         Folder root;
         if (parentPath == null) {
