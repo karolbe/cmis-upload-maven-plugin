@@ -183,6 +183,7 @@ public class CmisUploadMojo extends AbstractMojo {
         if (getLog().isDebugEnabled()) {
             getLog().info(String.format("Creating folder '%s' in location '%s' folder type is '%s'", folderName, parentPath, objectTypeId));
         }
+        parentPath = parentPath.replaceAll("\\\\", "/");
         Folder root;
         if (parentPath == null) {
             root = _session.getRootFolder();
